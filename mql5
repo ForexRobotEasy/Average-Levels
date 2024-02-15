@@ -1,0 +1,115 @@
+mql5
+//+------------------------------------------------------------------+
+//|                                                     Average Levels |
+//|             Copyright © 2022, forexroboteasy.com, Forex Robot Easy Team |
+//+------------------------------------------------------------------+
+
+#property copyright 'Copyright © 2022, forexroboteasy.com, Forex Robot Easy Team'
+#property link    'forexroboteasy.com'
+
+//+------------------------------------------------------------------+
+//| Constants                                                        |
+//+------------------------------------------------------------------+
+#define STYLE_SOLID 0
+#define STYLE_DASH 1
+#define STYLE_DOT 2
+
+//+------------------------------------------------------------------+
+//| Input parameters                                                 |
+//+------------------------------------------------------------------+
+input bool SeparateLevels = false; // Option to calculate average levels separately for Buy and Sell trades
+input color LevelColor = clrBlue; // Color of the level lines
+input color LabelColor = clrWhite; // Color of the level price labels
+input int LevelStyle = STYLE_SOLID; // Style of the level lines
+input int LabelFontSize = 10; // Font size of the level price labels
+
+//+------------------------------------------------------------------+
+//| Global variables                                                 |
+//+------------------------------------------------------------------+
+double averageEntryLevel = 0; // Average entry level for all trades
+double averageStopLossLevel = 0; // Average stop loss level for all trades
+double averageTakeProfitLevel = 0; // Average take profit level for all trades
+double totalLotSize = 0; // Total lot size for all trades
+
+//+------------------------------------------------------------------+
+//| Expert initialization function                                    |
+//+------------------------------------------------------------------+
+int OnInit()
+{
+    // Calculate average levels for all trades on the given symbol
+    CalculateAverageLevels(Symbol(), SeparateLevels);
+    
+    return INIT_SUCCEEDED;
+}
+
+//+------------------------------------------------------------------+
+//| Expert tick function                                              |
+//+------------------------------------------------------------------+
+void OnTick()
+{
+    // Do nothing in the tick function
+}
+
+//+------------------------------------------------------------------+
+//| Calculate average levels for all trades on the given symbol       |
+//+------------------------------------------------------------------+
+void CalculateAverageLevels(string symbol, bool separateLevels)
+{
+    // Reset global variables
+    averageEntryLevel = 0;
+    averageStopLossLevel = 0;
+    averageTakeProfitLevel = 0;
+    totalLotSize = 0;
+    
+    // Iterate through all trades
+    for (int i = 0; i < OrdersTotal(); i++)
+    {
+        if (OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
+        {
+            if (OrderSymbol() == symbol)
+            {
+                // Calculate average levels
+                averageEntryLevel += OrderOpenPrice() * OrderLots();
+                averageStopLossLevel += OrderStopLoss() * OrderLots();
+                averageTakeProfitLevel += OrderTakeProfit() * OrderLots();
+                totalLotSize += OrderLots();
+            }
+        }
+    }
+    
+    // Divide average levels by total lot size to get the average values
+    averageEntryLevel /= totalLotSize;
+    averageStopLossLevel /= totalLotSize;
+    averageTakeProfitLevel /= totalLotSize;
+    
+    // Draw average levels on the chart
+    DrawLevel(averageEntryLevel, 'Entry Level', LevelColor, LabelColor, LevelStyle, LabelFontSize);
+    DrawLevel(averageStopLossLevel, 'Stop Loss Level', LevelColor, LabelColor, LevelStyle, LabelFontSize);
+    DrawLevel(averageTakeProfitLevel, 'Take Profit Level', LevelColor, LabelColor, LevelStyle, LabelFontSize);
+}
+
+//+------------------------------------------------------------------+
+//| Draw level on the chart                                           |
+//+------------------------------------------------------------------+
+void DrawLevel(double level, string label, color levelColor, color labelColor, int levelStyle, int labelFontSize)
+{
+    ObjectCreate(0, 'Level', OBJ_HLINE, 0, 0, level);
+    ObjectSet('Level', OBJPROP_COLOR, levelColor);
+    ObjectSet('Level', OBJPROP_STYLE, levelStyle);
+    
+    ObjectCreate(0, 'Label', OBJ_LABEL, 0, 0, 0);
+    ObjectSetText('Label', DoubleToString(level, Digits), labelFontSize, 'Arial', labelColor);
+    ObjectSet('Label', OBJPROP_CORNER, CORNER_LEFT_UPPER);
+    ObjectSet('Label', OBJPROP_XDISTANCE, 10);
+    ObjectSet('Label', OBJPROP_YDISTANCE, 10);
+}
+
+//+------------------------------------------------------------------+
+//| Logical conclusion                                               |
+//+------------------------------------------------------------------+
+void OnDeinit(const int reason)
+{
+    // Remove all drawn objects from the chart
+    ObjectsDeleteAll(0, OBJ_HLINE);
+    ObjectsDeleteAll(0, OBJ_LABEL);
+}
